@@ -18,4 +18,5 @@ export interface Reporte {
   ubicacion: string; // Dirección escrita por el vecino (ej: "Calle principal, colonia Las Flores, frente a la cancha")
   estado: EstadoReporte;
   fechaCreacion: string; // Formato ISO o fecha formateada en español
+  fechaCambioEstado?: string; // Fecha en que cambió de estado por última vez (ej: "Avisado el 02/10/2026")
 }

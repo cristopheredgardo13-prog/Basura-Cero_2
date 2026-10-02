@@ -21,3 +21,15 @@ export function obtenerFechaActualFormateada(): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Obtiene la fecha actual en formato DD/MM/AAAA (ej: 02/10/2026)
+ * para el registro conciso de cambios de estado.
+ */
+export function obtenerFechaCorta(): string {
+  const ahora = new Date();
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const anio = ahora.getFullYear();
+  return `${dia}/${mes}/${anio}`;
+}

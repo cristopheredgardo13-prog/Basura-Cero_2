@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { PlusCircle, ShieldAlert, Sparkles, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Reporte, EstadoReporte } from './types/reporte';
 import { reportesIniciales } from './data/seed';
+import { obtenerFechaCorta } from './utils/fechas';
 import { FormularioReporte } from './components/FormularioReporte';
 import { ListaReportes } from './components/ListaReportes';
 
@@ -61,8 +62,18 @@ export default function App() {
    */
   const cambiarEstadoReporte = (id: string, nuevoEstado: EstadoReporte) => {
     setReportes((prev) => {
+      // Determinamos el prefijo según el estado seleccionado (ej: "Avisado el 02/10/2026")
+      const prefijo = nuevoEstado === 'abierto' ? 'Abierto' : nuevoEstado === 'avisado' ? 'Avisado' : 'Resuelto';
+      const fechaTexto = `${prefijo} el ${obtenerFechaCorta()}`;
+
       const actualizados = prev.map((r) =>
-        r.id === id ? { ...r, estado: nuevoEstado } : r
+        r.id === id
+          ? {
+              ...r,
+              estado: nuevoEstado,
+              fechaCambioEstado: fechaTexto,
+            }
+          : r
       );
       try {
         localStorage.setItem('basura_cero_reportes', JSON.stringify(actualizados));

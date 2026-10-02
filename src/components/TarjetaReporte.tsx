@@ -78,9 +78,19 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
               <span className="text-stone-600">{infoActual.descripcionEstado}</span>
             </div>
 
-            <div className="flex items-center gap-1 text-stone-500">
-              <Calendar className="w-3.5 h-3.5 text-stone-400" />
-              <span>{reporte.fechaCreacion}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-stone-500">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                <span>{reporte.fechaCreacion}</span>
+              </div>
+              {reporte.fechaCambioEstado && (
+                <>
+                  <span className="text-stone-300" aria-hidden="true">·</span>
+                  <span className="font-medium text-stone-800 bg-stone-100 px-2 py-0.5 rounded border border-stone-200 text-xs">
+                    {reporte.fechaCambioEstado}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 

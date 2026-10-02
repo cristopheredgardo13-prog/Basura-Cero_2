@@ -30,5 +30,6 @@ export const reportesIniciales: Reporte[] = [
     ubicacion: 'Avenida Monseñor Romero, pasaje 4, a 50 metros del puente',
     estado: 'avisado',
     fechaCreacion: '1 de octubre de 2026',
+    fechaCambioEstado: 'Avisado el 01/10/2026',
   },
 ];
