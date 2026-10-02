@@ -7,6 +7,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Image as ImageIcon, MapPin, FileText, X, Check, AlertCircle } from 'lucide-react';
 import { Reporte } from '../types/reporte';
 import { obtenerFechaActualFormateada } from '../utils/fechas';
+import { optimizarFoto } from '../utils/imagenes';
 
 interface FormularioReporteProps {
   onReporteCreado: (nuevoReporte: Reporte) => void;
@@ -24,15 +25,11 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * PUNTO CRÍTICO DE ERROR #3: Manejo de imágenes y vista previa.
-   * Dos errores muy comunes aquí:
-   * 1. Usar URL.createObjectURL() sin revocarlo, lo que provoca fugas de memoria en celulares.
-   *    O almacenar la URL efímera que deja de funcionar al recargar.
-   *    Usar FileReader.readAsDataURL() produce un Base64 autosuficiente para guardar en memoria.
-   * 2. No validar el tipo de archivo ni limitar el tamaño (fotos de 20MB de cámaras modernas
-   *    pueden ralentizar el navegador si no se valida).
+   * Optimización automática de la fotografía antes de guardarla.
+   * Reduce las dimensiones a un máximo de 800px de ancho y convierte a formato JPEG
+   * de calidad media, evitando desbordar la cuota de localStorage.
    */
-  const manejarSeleccionFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const manejarSeleccionFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setErrorValidacion(null);
     const archivo = e.target.files?.[0];
 
@@ -46,30 +43,16 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
       return;
     }
 
-    // Validación de tamaño (máximo 8MB para evitar colapsar la memoria del navegador)
-    const MAX_MB = 8;
-    if (archivo.size > MAX_MB * 1024 * 1024) {
-      setErrorValidacion(`La imagen es demasiado pesada (máximo ${MAX_MB}MB). Toma una foto con menor resolución.`);
-      return;
-    }
-
     setEstaCargandoFoto(true);
-    const lector = new FileReader();
-
-    lector.onload = () => {
-      if (typeof lector.result === 'string') {
-        // Asignamos la vista previa antes de guardar
-        setFotoUrl(lector.result);
-      }
+    try {
+      const fotoOptimizada = await optimizarFoto(archivo);
+      setFotoUrl(fotoOptimizada);
+    } catch (err) {
+      console.error(err);
+      setErrorValidacion('Ocurrió un error al procesar y optimizar la imagen.');
+    } finally {
       setEstaCargandoFoto(false);
-    };
-
-    lector.onerror = () => {
-      setErrorValidacion('Ocurrió un error al leer la imagen seleccionada.');
-      setEstaCargandoFoto(false);
-    };
-
-    lector.readAsDataURL(archivo);
+    }
   };
 
   /**

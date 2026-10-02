@@ -4,84 +4,71 @@
  */
 
 import React, { useState } from 'react';
-import { PlusCircle, ShieldAlert, Sparkles, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { PlusCircle, ShieldAlert, Sparkles, Trash2, CheckCircle2, AlertCircle, Download, AlertTriangle } from 'lucide-react';
 import { Reporte, EstadoReporte } from './types/reporte';
 import { reportesIniciales } from './data/seed';
 import { obtenerFechaCorta } from './utils/fechas';
+import { leerReportes, guardarReportes, exportarRespaldo } from './utils/almacenamiento';
 import { FormularioReporte } from './components/FormularioReporte';
 import { ListaReportes } from './components/ListaReportes';
 
 export default function App() {
   /**
-   * PUNTO CRÍTICO DE ERROR #7: Estado en memoria reactivo.
-   * La especificación indica: "por ahora los datos pueden vivir en memoria".
-   * Se inicia con reportes de ejemplo para que la unidad ambiental y los vecinos
-   * puedan interactuar de inmediato sin ver una pantalla vacía.
+   * Carga inicial confiable desde localStorage.
+   * Si no hay datos, retorna los reportes de ejemplo precargados.
    */
-  const [reportes, setReportes] = useState<Reporte[]>(() => {
-    // Intentamos cargar de localStorage si existe para evitar pérdida involuntaria al recargar,
-    // pero manteniendo el estado en memoria de la sesión.
-    try {
-      const guardados = localStorage.getItem('basura_cero_reportes');
-      if (guardados) {
-        return JSON.parse(guardados);
-      }
-    } catch {
-      // Si falla o no está disponible, usamos los iniciales
-    }
-    return reportesIniciales;
-  });
-
+  const [reportes, setReportes] = useState<Reporte[]>(() => leerReportes());
   const [mostrarFormulario, setMostrarFormulario] = useState<boolean>(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
+  const [errorAlmacenamiento, setErrorAlmacenamiento] = useState<string | null>(null);
 
   /**
-   * PUNTO CRÍTICO DE ERROR #8: Inmutabilidad al agregar un nuevo reporte.
-   * Nunca hacer `reportes.push(nuevo)`. En React, esto no dispara el re-renderizado
-   * y hace que la interfaz parezca congelada. Usamos el operador spread `[nuevo, ...prev]`.
+   * Guarda un nuevo reporte de forma inmutable y lo persiste en localStorage.
+   * Si localStorage falla por cuota u otro error, se alerta visiblemente al usuario.
    */
   const agregarReporte = (nuevoReporte: Reporte) => {
-    setReportes((prev) => {
-      const actualizados = [nuevoReporte, ...prev];
-      try {
-        localStorage.setItem('basura_cero_reportes', JSON.stringify(actualizados));
-      } catch {
-        // En caso de cuota excedida en localStorage por fotos grandes, el estado vive en memoria
-      }
-      return actualizados;
-    });
+    setErrorAlmacenamiento(null);
+    const actualizados = [nuevoReporte, ...reportes];
+    setReportes(actualizados);
+
+    const resultado = guardarReportes(actualizados);
+    if (!resultado.exito) {
+      setErrorAlmacenamiento(
+        resultado.error || 'El reporte no se pudo guardar de forma permanente en el dispositivo.'
+      );
+    } else {
+      setMensajeExito('¡Reporte guardado con éxito! Aparece ahora en la lista de reportes activos.');
+      setTimeout(() => setMensajeExito(null), 5000);
+    }
 
     setMostrarFormulario(false);
-    setMensajeExito('¡Reporte guardado con éxito! Aparece ahora en la lista de reportes activos.');
-    setTimeout(() => setMensajeExito(null), 5000);
   };
 
   /**
-   * PUNTO CRÍTICO DE ERROR #9: Inmutabilidad al cambiar el estado.
-   * Usar .map() para retornar una nueva instancia del array y del objeto modificado.
+   * Actualiza el estado del reporte con su fecha de cambio y lo guarda en localStorage.
    */
   const cambiarEstadoReporte = (id: string, nuevoEstado: EstadoReporte) => {
-    setReportes((prev) => {
-      // Determinamos el prefijo según el estado seleccionado (ej: "Avisado el 02/10/2026")
-      const prefijo = nuevoEstado === 'abierto' ? 'Abierto' : nuevoEstado === 'avisado' ? 'Avisado' : 'Resuelto';
-      const fechaTexto = `${prefijo} el ${obtenerFechaCorta()}`;
+    setErrorAlmacenamiento(null);
+    const prefijo = nuevoEstado === 'abierto' ? 'Abierto' : nuevoEstado === 'avisado' ? 'Avisado' : 'Resuelto';
+    const fechaTexto = `${prefijo} el ${obtenerFechaCorta()}`;
 
-      const actualizados = prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              estado: nuevoEstado,
-              fechaCambioEstado: fechaTexto,
-            }
-          : r
+    const actualizados = reportes.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            estado: nuevoEstado,
+            fechaCambioEstado: fechaTexto,
+          }
+        : r
+    );
+    setReportes(actualizados);
+
+    const resultado = guardarReportes(actualizados);
+    if (!resultado.exito) {
+      setErrorAlmacenamiento(
+        resultado.error || 'El cambio de estado no se pudo guardar de forma permanente en el dispositivo.'
       );
-      try {
-        localStorage.setItem('basura_cero_reportes', JSON.stringify(actualizados));
-      } catch {
-        // Fallback en memoria
-      }
-      return actualizados;
-    });
+    }
   };
 
   const totalActivos = reportes.filter((r) => r.estado !== 'resuelto').length;
@@ -107,17 +94,31 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
-            className={`px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer shadow-xs ${
-              mostrarFormulario
-                ? 'bg-emerald-950 text-emerald-200 hover:bg-black'
-                : 'bg-emerald-700 hover:bg-emerald-600 text-white'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>{mostrarFormulario ? 'Cerrar formulario' : 'Nuevo reporte'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* BOTÓN EXPORTAR RESPALDO */}
+            <button
+              type="button"
+              onClick={() => exportarRespaldo(reportes)}
+              className="px-3 py-2 rounded-lg text-xs md:text-sm font-medium bg-emerald-800/80 hover:bg-emerald-800 text-emerald-100 hover:text-white border border-emerald-700/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Descargar archivo JSON con todos los reportes"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar respaldo</span>
+              <span className="sm:hidden">Respaldo</span>
+            </button>
+
+            <button
+              onClick={() => setMostrarFormulario(!mostrarFormulario)}
+              className={`px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer shadow-xs ${
+                mostrarFormulario
+                  ? 'bg-emerald-950 text-emerald-200 hover:bg-black'
+                  : 'bg-emerald-700 hover:bg-emerald-600 text-white'
+              }`}
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>{mostrarFormulario ? 'Cerrar' : 'Nuevo reporte'}</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -153,6 +154,23 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* ALERTA DE ERROR DE ALMACENAMIENTO */}
+        {errorAlmacenamiento && (
+          <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 text-sm flex items-start gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold">Aviso de almacenamiento permanente:</p>
+              <p>{errorAlmacenamiento}</p>
+            </div>
+            <button
+              onClick={() => setErrorAlmacenamiento(null)}
+              className="text-rose-700 hover:text-rose-900 text-xs font-semibold cursor-pointer underline"
+            >
+              Cerrar
+            </button>
+          </div>
+        )}
 
         {/* Notificación de éxito temporal */}
         {mensajeExito && (
