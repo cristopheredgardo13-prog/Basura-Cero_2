@@ -1,0 +1,6 @@
+{
+  "name": "Basura Cero",
+  "description": "Herramienta para vecinos y la unidad ambiental municipal en El Salvador para documentar y dar seguimiento a botaderos ilegales de basura.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
