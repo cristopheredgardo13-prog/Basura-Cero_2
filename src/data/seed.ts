@@ -22,6 +22,15 @@ export const reportesIniciales: Reporte[] = [
     ubicacion: 'Calle principal, colonia Las Flores, frente a la cancha',
     estado: 'abierto',
     fechaCreacion: '2 de octubre de 2026',
+    diagnosticoIA: {
+      nivelUrgencia: 'ALTO',
+      diasMaximosAtencion: 3,
+      tipoVectores: ['Zancudos', 'Moscas comunes', 'Roedores'],
+      equipoRequerido: 'Camión recolector de 6T y cuadrilla de 3 operarios con palas',
+      requiereFumigacion: true,
+      resumenRiesgo: 'Obstrucción de cuneta con agua estancada, generando alto riesgo de criaderos de zancudos frente a la cancha comunal.',
+      fuente: 'gemini_api',
+    },
   },
   {
     id: 'rep-002',
@@ -31,5 +40,14 @@ export const reportesIniciales: Reporte[] = [
     estado: 'avisado',
     fechaCreacion: '1 de octubre de 2026',
     fechaCambioEstado: 'Avisado el 01/10/2026',
+    diagnosticoIA: {
+      nivelUrgencia: 'CRITICO',
+      diasMaximosAtencion: 1,
+      tipoVectores: ['Zancudos Aedes aegypti (Dengue)', 'Culebras', 'Alacranes'],
+      equipoRequerido: 'Camión plataforma para retiro de llantas y equipo de termonebulización',
+      requiereFumigacion: true,
+      resumenRiesgo: 'Las llantas con agua estancada constituyen el criadero principal de dengue en la zona.',
+      fuente: 'gemini_api',
+    },
   },
 ];

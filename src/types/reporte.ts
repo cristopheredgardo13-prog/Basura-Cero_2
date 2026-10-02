@@ -11,6 +11,16 @@
  */
 export type EstadoReporte = 'abierto' | 'avisado' | 'resuelto';
 
+export interface DiagnosticoAmbientalIA {
+  nivelUrgencia: 'CRITICO' | 'ALTO' | 'MEDIO' | 'BAJO' | string;
+  diasMaximosAtencion: number;
+  tipoVectores: string[];
+  equipoRequerido: string;
+  requiereFumigacion: boolean;
+  resumenRiesgo: string;
+  fuente?: string;
+}
+
 export interface Reporte {
   id: string;
   fotoUrl: string; // Base64 o URL de la imagen
@@ -19,4 +29,5 @@ export interface Reporte {
   estado: EstadoReporte;
   fechaCreacion: string; // Formato ISO o fecha formateada en español
   fechaCambioEstado?: string; // Fecha en que cambió de estado por última vez (ej: "Avisado el 02/10/2026")
+  diagnosticoIA?: DiagnosticoAmbientalIA; // Sello de evaluación ambiental generado con Gemini
 }

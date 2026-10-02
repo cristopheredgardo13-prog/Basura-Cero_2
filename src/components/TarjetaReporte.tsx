@@ -4,15 +4,21 @@
  */
 
 import React from 'react';
-import { MapPin, Calendar, AlertTriangle, Send, CheckCircle2, Clock } from 'lucide-react';
-import { Reporte, EstadoReporte } from '../types/reporte';
+import { MapPin, Calendar, AlertTriangle, Send, CheckCircle2, Clock, Sparkles } from 'lucide-react';
+import { Reporte, EstadoReporte, DiagnosticoAmbientalIA } from '../types/reporte';
+import { SelloAmbientalIA } from './SelloAmbientalIA';
 
 interface TarjetaReporteProps {
   reporte: Reporte;
   onCambiarEstado: (id: string, nuevoEstado: EstadoReporte) => void;
+  onActualizarDiagnostico?: (id: string, diagnostico: DiagnosticoAmbientalIA) => void;
 }
 
-export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambiarEstado }) => {
+export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({
+  reporte,
+  onCambiarEstado,
+  onActualizarDiagnostico,
+}) => {
   /**
    * Configuración de estilos de alto contraste para lectura bajo la luz del sol.
    * Todos los textos tienen un tamaño mínimo de 16px (text-base) y bordes gruesos bien definidos.
@@ -54,7 +60,17 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
     },
   };
 
-  const infoActual = configEstado[reporte.estado];
+  /**
+   * PROTECCIÓN CONTRA DATOS CORRUPTOS:
+   * Si el reporte viene con un estado nulo, indefinido o corrupto desde el almacenamiento,
+   * se utiliza 'abierto' como respaldo seguro para que la tarjeta nunca colapse en blanco.
+   */
+  const estadosPermitidos: EstadoReporte[] = ['abierto', 'avisado', 'resuelto'];
+  const estadoValido: EstadoReporte = estadosPermitidos.includes(reporte.estado)
+    ? reporte.estado
+    : 'abierto';
+
+  const infoActual = configEstado[estadoValido];
 
   return (
     <article className="bg-white border-2 border-stone-800 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row">
@@ -67,13 +83,19 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
           loading="lazy"
         />
         {/* Distintivo de estado para pantalla pequeña con alto contraste */}
-        <div className="absolute top-3 left-3 md:hidden">
+        <div className="absolute top-3 left-3 md:hidden flex flex-col gap-1.5 items-start">
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-base font-black ${infoActual.bgSoft} ${infoActual.colorTexto} border-2 ${infoActual.colorBorde} shadow-md`}
           >
             {infoActual.icon}
             <span>{infoActual.etiqueta}</span>
           </span>
+          {reporte.diagnosticoIA && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-base font-black bg-emerald-100 text-emerald-950 border-2 border-emerald-900 shadow-md">
+              <Sparkles className="w-4 h-4 text-emerald-900 shrink-0" aria-hidden="true" />
+              <span>IA: {reporte.diagnosticoIA.nivelUrgencia}</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -82,13 +104,19 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
         <div className="space-y-3">
           {/* Encabezado de estado y fechas (todos >= 16px) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2 flex-wrap">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-base font-black ${infoActual.bgSoft} ${infoActual.colorTexto} border-2 ${infoActual.colorBorde}`}
               >
                 {infoActual.icon}
                 <span>{infoActual.etiqueta}</span>
               </span>
+              {reporte.diagnosticoIA && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-base font-black bg-emerald-100 text-emerald-950 border-2 border-emerald-900 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-emerald-900 shrink-0" aria-hidden="true" />
+                  <span>IA: {reporte.diagnosticoIA.nivelUrgencia}</span>
+                </span>
+              )}
               <span className="text-base text-stone-900 font-semibold">
                 — {infoActual.descripcionEstado}
               </span>
@@ -113,7 +141,7 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
             <span className="block text-base font-bold text-stone-950 mb-1">
               Problema reportado:
             </span>
-            <p className="text-stone-950 text-base font-medium leading-relaxed">
+            <p className="text-stone-950 text-base font-medium leading-relaxed break-words [overflow-wrap:anywhere]">
               {reporte.descripcion}
             </p>
           </div>
@@ -121,15 +149,26 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
           {/* Ubicación escrita */}
           <div className="p-3 bg-stone-100 rounded-xl border-2 border-stone-300 flex items-start gap-2">
             <MapPin className="w-5 h-5 text-emerald-900 shrink-0 mt-0.5" aria-hidden="true" />
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="block text-base font-bold text-stone-950">
                 Ubicación del botadero:
               </span>
-              <span className="block text-base font-semibold text-stone-900">
+              <span className="block text-base font-semibold text-stone-900 break-words [overflow-wrap:anywhere]">
                 {reporte.ubicacion}
               </span>
             </div>
           </div>
+
+          {/* SELLO DE EVALUACIÓN AMBIENTAL CON IA */}
+          {onActualizarDiagnostico && (
+            <SelloAmbientalIA
+              reporteId={reporte.id}
+              descripcion={reporte.descripcion}
+              ubicacion={reporte.ubicacion}
+              diagnosticoActual={reporte.diagnosticoIA}
+              onActualizarDiagnostico={onActualizarDiagnostico}
+            />
+          )}
         </div>
 
         {/* 3. CAMBIAR ESTADO: ETIQUETA VISIBLE Y CONTROL CON ALTO CONTRASTE */}
@@ -144,8 +183,13 @@ export const TarjetaReporte: React.FC<TarjetaReporteProps> = ({ reporte, onCambi
           <div className="w-full sm:w-auto">
             <select
               id={`estado-${reporte.id}`}
-              value={reporte.estado}
-              onChange={(e) => onCambiarEstado(reporte.id, e.target.value as EstadoReporte)}
+              value={estadoValido}
+              onChange={(e) => {
+                const nuevo = e.target.value as EstadoReporte;
+                if (nuevo !== estadoValido) {
+                  onCambiarEstado(reporte.id, nuevo);
+                }
+              }}
               className="w-full sm:w-auto min-h-[48px] text-base font-black px-4 py-2.5 rounded-xl border-2 border-stone-900 bg-stone-50 hover:bg-white text-stone-950 focus:outline-none focus:ring-4 focus:ring-emerald-900/20 cursor-pointer shadow-xs"
             >
               <option value="abierto">Abierto (Pendiente)</option>

@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Reporte, EstadoReporte } from '../types/reporte';
+import { Reporte, EstadoReporte, DiagnosticoAmbientalIA } from '../types/reporte';
 import { TarjetaReporte } from './TarjetaReporte';
 import { AlertCircle, CheckCircle2, Inbox, PlusCircle } from 'lucide-react';
 
@@ -12,12 +12,14 @@ interface ListaReportesProps {
   reportes: Reporte[];
   onCambiarEstado: (id: string, nuevoEstado: EstadoReporte) => void;
   onIniciarReporte?: () => void;
+  onActualizarDiagnostico?: (id: string, diagnostico: DiagnosticoAmbientalIA) => void;
 }
 
 export const ListaReportes: React.FC<ListaReportesProps> = ({
   reportes,
   onCambiarEstado,
   onIniciarReporte,
+  onActualizarDiagnostico,
 }) => {
   const [vista, setVista] = useState<'activos' | 'resueltos'>('activos');
 
@@ -111,6 +113,7 @@ export const ListaReportes: React.FC<ListaReportesProps> = ({
               key={reporte.id}
               reporte={reporte}
               onCambiarEstado={onCambiarEstado}
+              onActualizarDiagnostico={onActualizarDiagnostico}
             />
           ))}
         </div>

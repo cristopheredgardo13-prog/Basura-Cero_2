@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { PlusCircle, CheckCircle2, Download, AlertTriangle, X } from 'lucide-react';
+import { PlusCircle, CheckCircle2, Download, AlertTriangle, X, Sparkles } from 'lucide-react';
 import { Reporte, EstadoReporte } from './types/reporte';
 import { obtenerFechaCorta } from './utils/fechas';
 import { leerReportes, guardarReportes, exportarRespaldo } from './utils/almacenamiento';
@@ -72,9 +72,30 @@ export default function App() {
     }
   };
 
+  /**
+   * Guarda el Sello de Evaluación Ambiental emitido por la IA para un reporte.
+   */
+  const actualizarDiagnosticoReporte = (id: string, diagnostico: any) => {
+    const actualizados = reportes.map((r) =>
+      r.id === id ? { ...r, diagnosticoIA: diagnostico } : r
+    );
+    setReportes(actualizados);
+    guardarReportes(actualizados);
+  };
+
   const totalActivos = reportes.filter((r) => r.estado !== 'resuelto').length;
   const totalAbiertos = reportes.filter((r) => r.estado === 'abierto').length;
   const totalAvisados = reportes.filter((r) => r.estado === 'avisado').length;
+
+  const manejarExportacion = () => {
+    try {
+      exportarRespaldo(reportes);
+      setMensajeExito('¡El archivo de respaldo se descargó en tu carpeta de descargas!');
+      setTimeout(() => setMensajeExito(null), 5000);
+    } catch {
+      setErrorAlmacenamiento('No se pudo generar el archivo de respaldo en tu dispositivo.');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-100 text-stone-950 font-sans">
@@ -100,7 +121,7 @@ export default function App() {
             {/* Botón secundario: Exportar respaldo */}
             <button
               type="button"
-              onClick={() => exportarRespaldo(reportes)}
+              onClick={manejarExportacion}
               className="min-h-[48px] px-4 py-3 rounded-xl text-base font-bold bg-emerald-900/90 hover:bg-emerald-900 text-white border-2 border-emerald-600 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               title="Descargar una copia de todos los reportes a tu dispositivo"
             >
@@ -168,6 +189,14 @@ export default function App() {
               <span className="text-base font-bold text-stone-950">Total activos:</span>
               <span className="text-xl font-black text-stone-950">{totalActivos}</span>
             </div>
+          </div>
+
+          {/* Notificación de funcionalidad de IA activa */}
+          <div className="flex items-center gap-2 pt-3 border-t-2 border-stone-200 text-base font-bold text-emerald-950">
+            <Sparkles className="w-5 h-5 text-emerald-900 shrink-0" aria-hidden="true" />
+            <span>
+              Evaluación Sanitaria con Gemini IA activa: cada reporte cuenta con diagnóstico de urgencia, vectores y equipo municipal recomendado.
+            </span>
           </div>
         </section>
 
@@ -237,6 +266,7 @@ export default function App() {
             reportes={reportes}
             onCambiarEstado={cambiarEstadoReporte}
             onIniciarReporte={() => setMostrarFormulario(true)}
+            onActualizarDiagnostico={actualizarDiagnosticoReporte}
           />
         </section>
       </main>

@@ -11,11 +11,21 @@
  *
  * Esta función obtiene la fecha local del dispositivo del usuario y la formatea en español legible.
  */
-export function obtenerFechaActualFormateada(): string {
+function obtenerFechaSegura(): Date {
   const ahora = new Date();
+  const anio = ahora.getFullYear();
+  // Si el reloj del dispositivo está descalibrado hacia un pasado o futuro inverosímil
+  if (anio < 2024 || anio > 2030 || isNaN(ahora.getTime())) {
+    return new Date(2026, 9, 2); // 2 de octubre de 2026
+  }
+  return ahora;
+}
+
+export function obtenerFechaActualFormateada(): string {
+  const fecha = obtenerFechaSegura();
   
   // Opciones para asegurar formato largo en español: "2 de octubre de 2026"
-  return ahora.toLocaleDateString('es-SV', {
+  return fecha.toLocaleDateString('es-SV', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -27,9 +37,9 @@ export function obtenerFechaActualFormateada(): string {
  * para el registro conciso de cambios de estado.
  */
 export function obtenerFechaCorta(): string {
-  const ahora = new Date();
-  const dia = String(ahora.getDate()).padStart(2, '0');
-  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-  const anio = ahora.getFullYear();
+  const fecha = obtenerFechaSegura();
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const anio = fecha.getFullYear();
   return `${dia}/${mes}/${anio}`;
 }

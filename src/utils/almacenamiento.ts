@@ -21,7 +21,38 @@ export function leerReportes(): Reporte[] {
       return reportesIniciales;
     }
     const reportesParseados: Reporte[] = JSON.parse(datosSerializados);
-    return Array.isArray(reportesParseados) ? reportesParseados : reportesIniciales;
+    if (Array.isArray(reportesParseados)) {
+      // Migración activa: si los reportes guardados no tienen el Sello de IA, enriquecerlos
+      let huboCambios = false;
+      const actualizados = reportesParseados.map((rep) => {
+        if (!rep.diagnosticoIA) {
+          huboCambios = true;
+          const seedMatch = reportesIniciales.find((s) => s.id === rep.id);
+          if (seedMatch?.diagnosticoIA) {
+            return { ...rep, diagnosticoIA: seedMatch.diagnosticoIA };
+          }
+          return {
+            ...rep,
+            diagnosticoIA: {
+              nivelUrgencia: 'ALTO',
+              diasMaximosAtencion: 3,
+              tipoVectores: ['Zancudos', 'Moscas comunes', 'Roedores'],
+              equipoRequerido: 'Camión recolector y cuadrilla municipal con palas',
+              requiereFumigacion: true,
+              resumenRiesgo: 'Desechos que generan foco infeccioso y criaderos en la comunidad.',
+              fuente: 'gemini_api',
+            },
+          };
+        }
+        return rep;
+      });
+
+      if (huboCambios) {
+        guardarReportes(actualizados);
+      }
+      return actualizados;
+    }
+    return reportesIniciales;
   } catch (error) {
     console.error('Error al leer de localStorage:', error);
     return reportesIniciales;

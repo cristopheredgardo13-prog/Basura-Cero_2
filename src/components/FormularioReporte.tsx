@@ -8,6 +8,7 @@ import { Camera, MapPin, FileText, X, Check, AlertCircle } from 'lucide-react';
 import { Reporte } from '../types/reporte';
 import { obtenerFechaActualFormateada } from '../utils/fechas';
 import { optimizarFoto } from '../utils/imagenes';
+import { solicitarSelloAmbientalIA } from '../utils/geminiClient';
 
 interface FormularioReporteProps {
   onReporteCreado: (nuevoReporte: Reporte) => void;
@@ -20,6 +21,7 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
   const [ubicacion, setUbicacion] = useState<string>('');
   const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
   const [estaCargandoFoto, setEstaCargandoFoto] = useState<boolean>(false);
+  const [enviando, setEnviando] = useState<boolean>(false);
 
   // Referencia al input file para poder limpiarlo por completo si el usuario cancela la foto
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +39,20 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
       return;
     }
 
-    // Validación sin términos técnicos: comprobar si es imagen
+    // Validación 1: archivo vacío o dañado de 0 bytes
+    if (archivo.size === 0) {
+      setErrorValidacion('El archivo seleccionado está vacío o dañado. Por favor elige una foto válida.');
+      return;
+    }
+
+    // Validación 2: archivo excesivamente pesado que colapse la memoria RAM del teléfono móvil
+    const MAX_MEGAS = 12;
+    if (archivo.size > MAX_MEGAS * 1024 * 1024) {
+      setErrorValidacion(`La foto es demasiado pesada (máximo ${MAX_MEGAS} MB). Por favor toma una foto en calidad estándar.`);
+      return;
+    }
+
+    // Validación 3: sin términos técnicos: comprobar si es imagen
     if (!archivo.type.startsWith('image/')) {
       setErrorValidacion('El archivo que seleccionaste no es una foto válida. Por favor elige una imagen.');
       return;
@@ -61,42 +76,73 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
     }
   };
 
-  const manejarEnvio = (e: React.FormEvent) => {
+  /**
+   * Limpia espacios invisibles, saltos repetidos y caracteres peligrosos
+   */
+  const sanitizarTexto = (texto: string) => {
+    return texto
+      .replace(/[<>]/g, '') // Elimina etiquetas HTML
+      .replace(/[\s\u200B]+/g, ' ') // Normaliza espacios y elimina espacios Unicode invisibles
+      .trim();
+  };
+
+  const manejarEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviando || estaCargandoFoto) return; // Evita doble clic o envío mientras procesa
     setErrorValidacion(null);
 
-    // Validación de campos obligatorios con mensajes claros y cotidianos
+    // Validación de foto
     if (!fotoUrl) {
       setErrorValidacion('Por favor toma o sube una foto del botadero para poder registrarlo.');
       return;
     }
 
-    if (!descripcion.trim()) {
-      setErrorValidacion('Por favor escribe qué tipo de basura o desechos hay en el lugar.');
+    // Sanitización y validación de texto
+    const descripcionLimpia = sanitizarTexto(descripcion);
+    if (descripcionLimpia.length < 5) {
+      setErrorValidacion('Por favor escribe una descripción del botadero con al menos 5 letras.');
       return;
     }
 
-    if (!ubicacion.trim()) {
-      setErrorValidacion('Por favor escribe la dirección o un punto de referencia para encontrar el lugar.');
+    const ubicacionLimpia = sanitizarTexto(ubicacion);
+    if (ubicacionLimpia.length < 5) {
+      setErrorValidacion('Por favor escribe la ubicación o punto de referencia con al menos 5 letras.');
       return;
     }
 
-    // Crear el nuevo reporte con estado 'abierto' por defecto y fecha actual
-    const nuevoReporte: Reporte = {
-      id: `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      fotoUrl,
-      descripcion: descripcion.trim(),
-      ubicacion: ubicacion.trim(),
-      estado: 'abierto',
-      fechaCreacion: obtenerFechaActualFormateada(),
-    };
+    setEnviando(true);
+    try {
+      // Solicitar diagnóstico inicial a la IA de forma automática
+      let diagnosticoInicial = undefined;
+      try {
+        const resultadoIA = await solicitarSelloAmbientalIA(descripcionLimpia, ubicacionLimpia);
+        if (resultadoIA.exito && resultadoIA.datos) {
+          diagnosticoInicial = resultadoIA.datos;
+        }
+      } catch (err) {
+        console.warn('Evaluación inicial con IA omitida:', err);
+      }
 
-    onReporteCreado(nuevoReporte);
+      // Crear el nuevo reporte con estado 'abierto' por defecto y fecha actual
+      const nuevoReporte: Reporte = {
+        id: `rep-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        fotoUrl,
+        descripcion: descripcionLimpia,
+        ubicacion: ubicacionLimpia,
+        estado: 'abierto',
+        fechaCreacion: obtenerFechaActualFormateada(),
+        diagnosticoIA: diagnosticoInicial,
+      };
 
-    // Limpiar formulario
-    eliminarFoto();
-    setDescripcion('');
-    setUbicacion('');
+      onReporteCreado(nuevoReporte);
+
+      // Limpiar formulario
+      eliminarFoto();
+      setDescripcion('');
+      setUbicacion('');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -212,6 +258,7 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
         <textarea
           id="input-descripcion"
           rows={3}
+          maxLength={300}
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
           placeholder="Ejemplo: Gran acumulación de bolsas con basura de casas, ramas secas y llantas cerca de la cuneta."
@@ -235,6 +282,7 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
         <input
           id="input-ubicacion"
           type="text"
+          maxLength={150}
           value={ubicacion}
           onChange={(e) => setUbicacion(e.target.value)}
           placeholder="Ejemplo: Calle principal, colonia Las Flores, frente a la cancha comunal"
@@ -248,17 +296,19 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
           <button
             type="button"
             onClick={onCancelar}
-            className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 rounded-xl border-2 border-stone-800 bg-white hover:bg-stone-100 text-stone-950 text-base font-bold transition-colors cursor-pointer text-center"
+            disabled={enviando}
+            className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 rounded-xl border-2 border-stone-800 bg-white hover:bg-stone-100 text-stone-950 text-base font-bold transition-colors cursor-pointer text-center disabled:opacity-50"
           >
             Cancelar y volver
           </button>
         )}
         <button
           type="submit"
-          className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white text-base font-black shadow-md border-2 border-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-2 text-center"
+          disabled={enviando || estaCargandoFoto}
+          className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white text-base font-black shadow-md border-2 border-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-2 text-center disabled:opacity-50"
         >
           <Check className="w-5 h-5 shrink-0" aria-hidden="true" />
-          <span>Guardar reporte</span>
+          <span>{enviando ? 'Evaluando con IA y guardando...' : 'Guardar reporte'}</span>
         </button>
       </div>
     </form>
