@@ -50,8 +50,8 @@ export function guardarReportes(reportes: Reporte[]): { exito: boolean; error?: 
     return {
       exito: false,
       error: esErrorCuota
-        ? 'El reporte no se pudo guardar de forma permanente porque el espacio de almacenamiento del navegador está lleno.'
-        : 'El reporte no se pudo guardar de forma permanente en el dispositivo.',
+        ? 'Tu teléfono o computadora no tiene suficiente memoria libre para guardar este reporte de forma permanente. Te sugerimos guardar una copia con el botón "Exportar respaldo".'
+        : 'No se pudo guardar el reporte de forma permanente en tu dispositivo.',
     };
   }
 }

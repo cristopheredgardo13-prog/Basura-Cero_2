@@ -4,9 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { PlusCircle, ShieldAlert, Sparkles, Trash2, CheckCircle2, AlertCircle, Download, AlertTriangle } from 'lucide-react';
+import { PlusCircle, CheckCircle2, Download, AlertTriangle, X } from 'lucide-react';
 import { Reporte, EstadoReporte } from './types/reporte';
-import { reportesIniciales } from './data/seed';
 import { obtenerFechaCorta } from './utils/fechas';
 import { leerReportes, guardarReportes, exportarRespaldo } from './utils/almacenamiento';
 import { FormularioReporte } from './components/FormularioReporte';
@@ -14,8 +13,8 @@ import { ListaReportes } from './components/ListaReportes';
 
 export default function App() {
   /**
-   * Carga inicial confiable desde localStorage.
-   * Si no hay datos, retorna los reportes de ejemplo precargados.
+   * Carga inicial confiable desde almacenamiento local.
+   * Si no hay registros previos, inicializa con los datos de prueba.
    */
   const [reportes, setReportes] = useState<Reporte[]>(() => leerReportes());
   const [mostrarFormulario, setMostrarFormulario] = useState<boolean>(false);
@@ -23,8 +22,8 @@ export default function App() {
   const [errorAlmacenamiento, setErrorAlmacenamiento] = useState<string | null>(null);
 
   /**
-   * Guarda un nuevo reporte de forma inmutable y lo persiste en localStorage.
-   * Si localStorage falla por cuota u otro error, se alerta visiblemente al usuario.
+   * Agrega un nuevo reporte y lo guarda de forma persistente.
+   * Si falla el guardado, emite una alerta clara sin términos técnicos.
    */
   const agregarReporte = (nuevoReporte: Reporte) => {
     setErrorAlmacenamiento(null);
@@ -34,18 +33,19 @@ export default function App() {
     const resultado = guardarReportes(actualizados);
     if (!resultado.exito) {
       setErrorAlmacenamiento(
-        resultado.error || 'El reporte no se pudo guardar de forma permanente en el dispositivo.'
+        resultado.error ||
+          'No se pudo guardar el reporte de forma permanente en este dispositivo. Podría perderse si cierras el navegador.'
       );
     } else {
-      setMensajeExito('¡Reporte guardado con éxito! Aparece ahora en la lista de reportes activos.');
-      setTimeout(() => setMensajeExito(null), 5000);
+      setMensajeExito('¡El reporte se guardó correctamente! Ya aparece en la lista de casos activos.');
+      setTimeout(() => setMensajeExito(null), 6000);
     }
 
     setMostrarFormulario(false);
   };
 
   /**
-   * Actualiza el estado del reporte con su fecha de cambio y lo guarda en localStorage.
+   * Actualiza el estado de un reporte registrando la fecha del cambio.
    */
   const cambiarEstadoReporte = (id: string, nuevoEstado: EstadoReporte) => {
     setErrorAlmacenamiento(null);
@@ -66,7 +66,8 @@ export default function App() {
     const resultado = guardarReportes(actualizados);
     if (!resultado.exito) {
       setErrorAlmacenamiento(
-        resultado.error || 'El cambio de estado no se pudo guardar de forma permanente en el dispositivo.'
+        resultado.error ||
+          'El cambio de estado no se pudo guardar de forma permanente en este dispositivo.'
       );
     }
   };
@@ -76,113 +77,137 @@ export default function App() {
   const totalAvisados = reportes.filter((r) => r.estado === 'avisado').length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-100 text-stone-900 selection:bg-emerald-200">
-      {/* BARRA SUPERIOR INSTITUCIONAL Y COMUNITARIA */}
-      <header className="bg-emerald-900 text-white border-b border-emerald-950 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div className="min-h-screen flex flex-col bg-stone-100 text-stone-950 font-sans">
+      {/* BARRA SUPERIOR INSTITUCIONAL (Accesible desde 320px de ancho y con una sola mano) */}
+      <header className="bg-emerald-950 text-white border-b-2 border-black sticky top-0 z-30 shadow-md">
+        <div className="max-w-5xl mx-auto p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-800 border border-emerald-700/60 flex items-center justify-center text-emerald-200 font-black text-xl">
+            <div className="w-12 h-12 rounded-xl bg-emerald-900 border-2 border-emerald-400 flex items-center justify-center text-white font-black text-2xl shrink-0">
               BC
             </div>
             <div>
-              <h1 className="text-lg md:text-xl font-bold tracking-tight text-white leading-tight">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
                 BASURA CERO
               </h1>
-              <p className="text-xs text-emerald-300 hidden sm:block">
-                Unidad Ambiental Municipal y Red de Vecinos Vigilantes · El Salvador
+              <p className="text-base text-emerald-200 font-semibold leading-snug">
+                Comunidad y Alcaldía en El Salvador
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* BOTÓN EXPORTAR RESPALDO */}
+          {/* CONTROLES DE LA BARRA: 1 botón principal por pantalla, los demás secundarios */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            {/* Botón secundario: Exportar respaldo */}
             <button
               type="button"
               onClick={() => exportarRespaldo(reportes)}
-              className="px-3 py-2 rounded-lg text-xs md:text-sm font-medium bg-emerald-800/80 hover:bg-emerald-800 text-emerald-100 hover:text-white border border-emerald-700/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-              title="Descargar archivo JSON con todos los reportes"
+              className="min-h-[48px] px-4 py-3 rounded-xl text-base font-bold bg-emerald-900/90 hover:bg-emerald-900 text-white border-2 border-emerald-600 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              title="Descargar una copia de todos los reportes a tu dispositivo"
             >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Exportar respaldo</span>
-              <span className="sm:hidden">Respaldo</span>
+              <Download className="w-5 h-5 shrink-0" aria-hidden="true" />
+              <span>Exportar respaldo</span>
             </button>
 
+            {/*
+              REGLA DE UN SOLO BOTÓN PRINCIPAL:
+              - Si el formulario está CERRADO: este botón es el BOTÓN PRINCIPAL de la pantalla.
+              - Si el formulario está ABIERTO: este botón pasa a ser SECUNDARIO ("Cerrar"),
+                ya que el único botón principal de la pantalla pasa a ser "Guardar reporte" en el formulario.
+            */}
             <button
               onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className={`px-3.5 py-2 rounded-lg text-xs md:text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer shadow-xs ${
+              className={`min-h-[48px] px-5 py-3 rounded-xl text-base font-black transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                 mostrarFormulario
-                  ? 'bg-emerald-950 text-emerald-200 hover:bg-black'
-                  : 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                  ? 'bg-transparent text-white border-2 border-white hover:bg-emerald-900'
+                  : 'bg-white text-emerald-950 border-2 border-white hover:bg-stone-200'
               }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>{mostrarFormulario ? 'Cerrar' : 'Nuevo reporte'}</span>
+              {mostrarFormulario ? (
+                <>
+                  <X className="w-5 h-5 shrink-0" aria-hidden="true" />
+                  <span>Cerrar formulario</span>
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="w-5 h-5 shrink-0 text-emerald-950" aria-hidden="true" />
+                  <span>+ Reportar botadero</span>
+                </>
+              )}
             </button>
           </div>
         </div>
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 space-y-6">
-        {/* Banner de propósito comunitario */}
-        <section className="bg-white border border-stone-200 rounded-xl p-4 md:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-xs font-semibold tracking-wider uppercase text-emerald-800">
-              Vigilancia Ambiental Comunitaria
+      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-5 space-y-5">
+        {/* BANNER DE PROPÓSITO CON ALTO CONTRASTE PARA LEER AL SOL */}
+        <section className="bg-white border-2 border-stone-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+          <div className="space-y-1.5">
+            <span className="block text-base font-black uppercase tracking-wider text-emerald-900">
+              Vigilancia Ambiental Ciudadana
             </span>
-            <h2 className="text-base md:text-lg font-bold text-stone-900">
+            <h2 className="text-xl sm:text-2xl font-black text-stone-950 leading-snug">
               Los botaderos ilegales de basura crecen porque nadie los documenta.
             </h2>
-            <p className="text-xs md:text-sm text-stone-600 leading-relaxed max-w-2xl">
-              Tomá una foto, describí el problema e indicá la dirección exacta para coordinar con la cuadrilla municipal de recolección y erradicar los focos de contaminación.
+            <p className="text-base text-stone-950 font-medium leading-relaxed">
+              Tomá una foto, describí qué desechos hay e indicá la dirección exacta para coordinar con la cuadrilla municipal de recolección y mantener limpia nuestra comunidad.
             </p>
           </div>
 
-          {/* Resumen numérico rápido */}
-          <div className="flex items-center gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-stone-100">
-            <div className="px-3 py-2 bg-rose-50 border border-rose-100 rounded-lg text-center">
-              <span className="block text-xs font-medium text-rose-700">Abiertos</span>
-              <span className="text-lg font-bold text-rose-900">{totalAbiertos}</span>
+          {/* Resumen de estados con contraste alto y texto >= 16px */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t-2 border-stone-200">
+            <div className="p-3 bg-rose-100 border-2 border-rose-900 rounded-xl flex items-center justify-between">
+              <span className="text-base font-bold text-rose-950">Casos abiertos:</span>
+              <span className="text-xl font-black text-rose-950">{totalAbiertos}</span>
             </div>
-            <div className="px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg text-center">
-              <span className="block text-xs font-medium text-amber-700">Avisados</span>
-              <span className="text-lg font-bold text-amber-900">{totalAvisados}</span>
+            <div className="p-3 bg-amber-100 border-2 border-amber-900 rounded-xl flex items-center justify-between">
+              <span className="text-base font-bold text-amber-950">Avisados a alcaldía:</span>
+              <span className="text-xl font-black text-amber-950">{totalAvisados}</span>
             </div>
-            <div className="px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-center">
-              <span className="block text-xs font-medium text-stone-700">Total activos</span>
-              <span className="text-lg font-bold text-stone-900">{totalActivos}</span>
+            <div className="p-3 bg-stone-200 border-2 border-stone-800 rounded-xl flex items-center justify-between">
+              <span className="text-base font-bold text-stone-950">Total activos:</span>
+              <span className="text-xl font-black text-stone-950">{totalActivos}</span>
             </div>
           </div>
         </section>
 
-        {/* ALERTA DE ERROR DE ALMACENAMIENTO */}
+        {/* MENSAJE DE ERROR VISIBLE, EN ESPAÑOL Y SIN PALABRAS TÉCNICAS */}
         {errorAlmacenamiento && (
-          <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 text-sm flex items-start gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold">Aviso de almacenamiento permanente:</p>
-              <p>{errorAlmacenamiento}</p>
+          <div
+            role="alert"
+            className="p-4 bg-rose-100 border-2 border-rose-900 rounded-2xl text-rose-950 text-base font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md"
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-6 h-6 text-rose-900 shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <p className="font-black text-base">Aviso importante:</p>
+                <p className="font-semibold text-base">{errorAlmacenamiento}</p>
+              </div>
             </div>
             <button
+              type="button"
               onClick={() => setErrorAlmacenamiento(null)}
-              className="text-rose-700 hover:text-rose-900 text-xs font-semibold cursor-pointer underline"
+              className="min-h-[44px] px-4 py-2 rounded-lg bg-rose-900 text-white font-bold text-base hover:bg-rose-950 transition-colors cursor-pointer self-end sm:self-auto"
             >
-              Cerrar
+              Entendido
             </button>
           </div>
         )}
 
-        {/* Notificación de éxito temporal */}
+        {/* MENSAJE DE ÉXITO VISIBLE, EN ESPAÑOL Y SIN PALABRAS TÉCNICAS */}
         {mensajeExito && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-sm font-medium flex items-center gap-2.5 animate-fadeIn">
-            <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-            <span>{mensajeExito}</span>
+          <div
+            role="status"
+            className="p-4 bg-emerald-100 border-2 border-emerald-900 rounded-2xl text-emerald-950 text-base font-bold flex items-center gap-3 shadow-md"
+          >
+            <CheckCircle2 className="w-6 h-6 text-emerald-900 shrink-0" aria-hidden="true" />
+            <span className="font-bold text-base">{mensajeExito}</span>
           </div>
         )}
 
-        {/* Formulario de nuevo reporte (desplegable o directo) */}
+        {/* FORMULARIO DE NUEVO REPORTE */}
         {mostrarFormulario && (
-          <section className="transition-all">
+          <section>
             <FormularioReporte
               onReporteCreado={agregarReporte}
               onCancelar={() => setMostrarFormulario(false)}
@@ -190,20 +215,20 @@ export default function App() {
           </section>
         )}
 
-        {/* Lista de reportes activos */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-stone-900">
-              Monitoreo y seguimiento de botaderos
+        {/* LISTADO DE REPORTES ACTIVOS O VACÍO */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h2 className="text-xl sm:text-2xl font-black text-stone-950">
+              Monitoreo de botaderos comunitarios
             </h2>
             {!mostrarFormulario && (
               <button
                 type="button"
                 onClick={() => setMostrarFormulario(true)}
-                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
+                className="text-base font-black text-emerald-900 hover:text-emerald-950 underline decoration-2 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto min-h-[44px]"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Reportar otro botadero
+                <PlusCircle className="w-5 h-5 shrink-0" aria-hidden="true" />
+                <span>Registrar otro botadero</span>
               </button>
             )}
           </div>
@@ -211,17 +236,18 @@ export default function App() {
           <ListaReportes
             reportes={reportes}
             onCambiarEstado={cambiarEstadoReporte}
+            onIniciarReporte={() => setMostrarFormulario(true)}
           />
         </section>
       </main>
 
-      {/* PIE DE PÁGINA */}
-      <footer className="bg-stone-200/80 border-t border-stone-300 py-6 text-center text-xs text-stone-600 mt-auto">
-        <div className="max-w-5xl mx-auto px-4 space-y-1">
-          <p className="font-semibold text-stone-800">
+      {/* PIE DE PÁGINA ACCESIBLE Y LEGIBLE */}
+      <footer className="bg-stone-200 border-t-2 border-stone-400 py-6 text-center text-base text-stone-950 mt-auto font-medium">
+        <div className="max-w-5xl mx-auto px-4 space-y-1.5">
+          <p className="font-black text-stone-950 text-base">
             BASURA CERO · Iniciativa Comunitaria y Municipal en El Salvador
           </p>
-          <p>
+          <p className="text-stone-900 text-base">
             Documentando la basura para proteger la salud de nuestras familias, ríos y quebradas.
           </p>
         </div>

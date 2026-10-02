@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { Camera, Image as ImageIcon, MapPin, FileText, X, Check, AlertCircle } from 'lucide-react';
+import { Camera, MapPin, FileText, X, Check, AlertCircle } from 'lucide-react';
 import { Reporte } from '../types/reporte';
 import { obtenerFechaActualFormateada } from '../utils/fechas';
 import { optimizarFoto } from '../utils/imagenes';
@@ -27,7 +27,7 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
   /**
    * Optimización automática de la fotografía antes de guardarla.
    * Reduce las dimensiones a un máximo de 800px de ancho y convierte a formato JPEG
-   * de calidad media, evitando desbordar la cuota de localStorage.
+   * de calidad media, evitando desbordar la memoria de almacenamiento.
    */
   const manejarSeleccionFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setErrorValidacion(null);
@@ -37,9 +37,9 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
       return;
     }
 
-    // Validación: asegurarse que el archivo sea realmente una imagen
+    // Validación sin términos técnicos: comprobar si es imagen
     if (!archivo.type.startsWith('image/')) {
-      setErrorValidacion('El archivo seleccionado no es una imagen válida.');
+      setErrorValidacion('El archivo que seleccionaste no es una foto válida. Por favor elige una imagen.');
       return;
     }
 
@@ -47,19 +47,13 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
     try {
       const fotoOptimizada = await optimizarFoto(archivo);
       setFotoUrl(fotoOptimizada);
-    } catch (err) {
-      console.error(err);
-      setErrorValidacion('Ocurrió un error al procesar y optimizar la imagen.');
+    } catch {
+      setErrorValidacion('Hubo un problema al procesar la foto. Por favor intenta tomar otra.');
     } finally {
       setEstaCargandoFoto(false);
     }
   };
 
-  /**
-   * PUNTO CRÍTICO DE ERROR #4: Limpiar el valor del input file.
-   * Si no se resetea fileInputRef.current.value = '', el navegador NO disparará
-   * el evento onChange si el usuario elimina la foto y vuelve a seleccionar exactamente la misma.
-   */
   const eliminarFoto = () => {
     setFotoUrl('');
     if (fileInputRef.current) {
@@ -71,19 +65,19 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
     e.preventDefault();
     setErrorValidacion(null);
 
-    // Validación de campos obligatorios
+    // Validación de campos obligatorios con mensajes claros y cotidianos
     if (!fotoUrl) {
-      setErrorValidacion('Por favor selecciona o toma una foto del botadero para evidenciar el problema.');
+      setErrorValidacion('Por favor toma o sube una foto del botadero para poder registrarlo.');
       return;
     }
 
     if (!descripcion.trim()) {
-      setErrorValidacion('Por favor escribe una descripción del botadero (tipo de basura, volumen, etc.).');
+      setErrorValidacion('Por favor escribe qué tipo de basura o desechos hay en el lugar.');
       return;
     }
 
     if (!ubicacion.trim()) {
-      setErrorValidacion('Por favor indica la ubicación escrita (calle, colonia, punto de referencia).');
+      setErrorValidacion('Por favor escribe la dirección o un punto de referencia para encontrar el lugar.');
       return;
     }
 
@@ -93,7 +87,7 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
       fotoUrl,
       descripcion: descripcion.trim(),
       ubicacion: ubicacion.trim(),
-      estado: 'abierto', // Criterio de aceptación: siempre inicia como "abierto"
+      estado: 'abierto',
       fechaCreacion: obtenerFechaActualFormateada(),
     };
 
@@ -106,58 +100,73 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
   };
 
   return (
-    <form onSubmit={manejarEnvio} className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm space-y-5">
-      <div className="border-b border-stone-100 pb-3">
-        <h2 className="text-lg font-semibold text-stone-900 flex items-center gap-2">
-          <Camera className="w-5 h-5 text-emerald-700" />
-          Reportar un botadero ilegal
+    <form
+      onSubmit={manejarEnvio}
+      className="bg-white border-2 border-stone-900 rounded-2xl p-4 sm:p-6 shadow-md space-y-6 max-w-full"
+    >
+      <div className="border-b-2 border-stone-200 pb-4">
+        <h2 className="text-xl sm:text-2xl font-black text-stone-950 flex items-center gap-2">
+          <Camera className="w-6 h-6 text-emerald-900 shrink-0" aria-hidden="true" />
+          <span>Reportar un botadero ilegal</span>
         </h2>
-        <p className="text-sm text-stone-500 mt-0.5">
-          Documentá el botadero para que la comunidad y la alcaldía puedan darle seguimiento.
+        <p className="text-base text-stone-900 font-medium mt-1">
+          Llená estos datos para que la unidad ambiental de la alcaldía organice la recolección.
         </p>
       </div>
 
-      {/* Mensaje de error de validación */}
+      {/* Mensaje de error visible en caso de faltar información */}
       {errorValidacion && (
-        <div className="flex items-start gap-2.5 p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
-          <p>{errorValidacion}</p>
+        <div
+          role="alert"
+          className="flex items-start gap-3 p-4 bg-rose-100 border-2 border-rose-800 rounded-xl text-rose-950 text-base font-bold"
+        >
+          <AlertCircle className="w-6 h-6 shrink-0 text-rose-800 mt-0.5" aria-hidden="true" />
+          <div>
+            <p className="font-black text-base">Atención:</p>
+            <p className="font-semibold text-base">{errorValidacion}</p>
+          </div>
         </div>
       )}
 
-      {/* 1. SECCIÓN DE FOTO CON VISTA PREVIA */}
+      {/* 1. SECCIÓN DE FOTO CON ETIQUETA VISIBLE Y VISTA PREVIA */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-stone-800">
-          Foto del botadero <span className="text-rose-600">*</span>
+        <label
+          htmlFor="input-foto"
+          className="block text-base font-bold text-stone-950"
+        >
+          Foto de la basura o botadero <span className="text-rose-800 font-bold">(Obligatorio)</span>
         </label>
+        <p className="text-base text-stone-800 font-normal">
+          Mostrá claramente los desechos para que la cuadrilla sepa qué equipo llevar.
+        </p>
 
         {fotoUrl ? (
           /* Vista previa de la foto antes de guardar */
-          <div className="relative rounded-lg overflow-hidden border border-stone-200 bg-stone-100 max-h-72 flex items-center justify-center group">
+          <div className="rounded-xl overflow-hidden border-2 border-stone-900 bg-stone-100 relative">
             <img
               src={fotoUrl}
-              alt="Vista previa de la evidencia"
-              className="w-full h-64 object-cover"
+              alt="Vista previa de la foto que vas a guardar"
+              className="w-full max-h-72 object-cover block"
             />
-            <div className="absolute top-2 right-2">
+            <div className="p-3 bg-stone-900 text-white flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-base font-bold text-emerald-300">
+                <Check className="w-5 h-5 shrink-0 text-emerald-400" aria-hidden="true" />
+                Foto lista para guardar
+              </span>
+              {/* Botón secundario para cambiar foto */}
               <button
                 type="button"
                 onClick={eliminarFoto}
-                className="bg-stone-900/80 hover:bg-stone-900 text-white p-2 rounded-lg backdrop-blur-xs transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer shadow-md"
-                title="Quitar foto"
+                className="min-h-[48px] px-4 py-2.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-white text-base font-bold border-2 border-stone-400 flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" aria-hidden="true" />
                 Cambiar foto
               </button>
             </div>
-            <div className="absolute bottom-2 left-2 bg-stone-900/70 text-white text-xs px-2.5 py-1 rounded backdrop-blur-xs flex items-center gap-1">
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              Foto cargada correctamente
-            </div>
           </div>
         ) : (
-          /* Botón de carga o captura de imagen */
-          <div className="border-2 border-dashed border-stone-300 hover:border-emerald-600 rounded-xl p-6 text-center transition-colors bg-stone-50/50">
+          /* Botón grande para captura de imagen con el dedo */
+          <div className="border-2 border-dashed border-stone-800 hover:border-emerald-900 rounded-xl p-6 text-center transition-colors bg-stone-50">
             <input
               ref={fileInputRef}
               type="file"
@@ -169,76 +178,87 @@ export const FormularioReporte: React.FC<FormularioReporteProps> = ({ onReporteC
             />
             <label
               htmlFor="input-foto"
-              className="cursor-pointer flex flex-col items-center justify-center gap-2"
+              className="cursor-pointer flex flex-col items-center justify-center gap-3 min-h-[96px]"
             >
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                <Camera className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-900 text-emerald-950 flex items-center justify-center">
+                <Camera className="w-7 h-7" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-stone-800">
-                  {estaCargandoFoto ? 'Procesando imagen...' : 'Tomar foto o subir desde el celular / PC'}
-                </p>
-                <p className="text-xs text-stone-500 mt-1">
-                  Formatos JPG, PNG o WEBP (máx. 8MB). Podrás ver la vista previa antes de guardar.
-                </p>
+                <span className="block text-base font-bold text-stone-950 underline decoration-2">
+                  {estaCargandoFoto ? 'Procesando foto...' : 'Tocar aquí para tomar foto o elegir archivo'}
+                </span>
+                <span className="block text-base text-stone-800 mt-1 font-normal">
+                  Podrás ver cómo queda antes de guardar el reporte.
+                </span>
               </div>
             </label>
           </div>
         )}
       </div>
 
-      {/* 2. SECCIÓN DE DESCRIPCIÓN */}
-      <div className="space-y-1.5">
-        <label htmlFor="input-descripcion" className="block text-sm font-medium text-stone-800 flex items-center gap-1.5">
-          <FileText className="w-4 h-4 text-stone-500" />
-          Descripción del problema <span className="text-rose-600">*</span>
+      {/* 2. SECCIÓN DE DESCRIPCIÓN CON ETIQUETA VISIBLE */}
+      <div className="space-y-2">
+        <label
+          htmlFor="input-descripcion"
+          className="block text-base font-bold text-stone-950 flex items-center gap-2"
+        >
+          <FileText className="w-5 h-5 text-stone-900 shrink-0" aria-hidden="true" />
+          <span>Descripción del problema</span>
+          <span className="text-rose-800 font-bold">(Obligatorio)</span>
         </label>
+        <p className="text-base text-stone-800 font-normal">
+          Contanos qué hay tirado: bolsas plásticas, ramas, ripio, animales muertos o llantas.
+        </p>
         <textarea
           id="input-descripcion"
           rows={3}
           value={descripcion}
           onChange={(e) => setDescripcion(e.target.value)}
-          placeholder="Ej: Acumulación de bolsas plásticas, ripio, restos de poda y recipientes que acumulan agua de lluvia..."
-          className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 text-sm text-stone-900 placeholder:text-stone-400 bg-white"
+          placeholder="Ejemplo: Gran acumulación de bolsas con basura de casas, ramas secas y llantas cerca de la cuneta."
+          className="w-full p-3.5 rounded-xl border-2 border-stone-800 focus:outline-none focus:ring-4 focus:ring-emerald-900/20 focus:border-emerald-900 text-base text-stone-950 placeholder:text-stone-600 bg-white font-medium"
         />
       </div>
 
-      {/* 3. SECCIÓN DE UBICACIÓN ESCRITA */}
-      <div className="space-y-1.5">
-        <label htmlFor="input-ubicacion" className="block text-sm font-medium text-stone-800 flex items-center gap-1.5">
-          <MapPin className="w-4 h-4 text-stone-500" />
-          Ubicación escrita <span className="text-rose-600">*</span>
+      {/* 3. SECCIÓN DE UBICACIÓN ESCRITA CON ETIQUETA VISIBLE */}
+      <div className="space-y-2">
+        <label
+          htmlFor="input-ubicacion"
+          className="block text-base font-bold text-stone-950 flex items-center gap-2"
+        >
+          <MapPin className="w-5 h-5 text-stone-900 shrink-0" aria-hidden="true" />
+          <span>Ubicación escrita y puntos de referencia</span>
+          <span className="text-rose-800 font-bold">(Obligatorio)</span>
         </label>
+        <p className="text-base text-stone-800 font-normal">
+          Indicá la calle, colonia y señas fáciles para que la cuadrilla llegue directo.
+        </p>
         <input
           id="input-ubicacion"
           type="text"
           value={ubicacion}
           onChange={(e) => setUbicacion(e.target.value)}
-          placeholder="Ej: Calle principal, colonia Las Flores, frente a la cancha"
-          className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 text-sm text-stone-900 placeholder:text-stone-400 bg-white"
+          placeholder="Ejemplo: Calle principal, colonia Las Flores, frente a la cancha comunal"
+          className="w-full p-3.5 rounded-xl border-2 border-stone-800 focus:outline-none focus:ring-4 focus:ring-emerald-900/20 focus:border-emerald-900 text-base text-stone-950 placeholder:text-stone-600 bg-white font-medium"
         />
-        <p className="text-xs text-stone-500">
-          Detallá puntos de referencia claros para que la cuadrilla de limpieza municipal pueda encontrar el lugar con facilidad.
-        </p>
       </div>
 
-      {/* BOTONES DE ACCIÓN */}
-      <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+      {/* BOTONES DE ACCIÓN: UN SOLO BOTÓN PRINCIPAL ("Guardar reporte"), EL OTRO SECUNDARIO */}
+      <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
         {onCancelar && (
           <button
             type="button"
             onClick={onCancelar}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 text-sm font-medium transition-colors cursor-pointer"
+            className="w-full sm:w-auto min-h-[48px] px-6 py-3.5 rounded-xl border-2 border-stone-800 bg-white hover:bg-stone-100 text-stone-950 text-base font-bold transition-colors cursor-pointer text-center"
           >
-            Cancelar
+            Cancelar y volver
           </button>
         )}
         <button
           type="submit"
-          className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-medium shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2"
+          className="w-full sm:w-auto min-h-[48px] px-8 py-3.5 rounded-xl bg-emerald-900 hover:bg-emerald-950 text-white text-base font-black shadow-md border-2 border-emerald-950 transition-colors cursor-pointer flex items-center justify-center gap-2 text-center"
         >
-          <Check className="w-4 h-4" />
-          Guardar reporte
+          <Check className="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span>Guardar reporte</span>
         </button>
       </div>
     </form>
